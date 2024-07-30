@@ -1,3 +1,4 @@
+//@ts-nocheck
 import * as path from "node:path";
 
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
@@ -58,18 +59,22 @@ export class FrameworkClientPlugin {
         Object.entries(this.remotes).map(([name, remote]) => [
           `${cleanRemoteName(name)}_client`,
           libType
-            ? `${libType} ${remote.ssrEntry}`
+            ? `${cleanRemoteName(name)}_client@${remote.ssrEntry}`
             : `${cleanRemoteName(name)}_client@${remote.browserEntry}`,
         ])
       ),
-      [this.containerName + "_client"]: libType
-        ? `${libType} ./remote-entry.js`
-        : `${this.containerName}_client@/remote-entry.js`,
+      // [this.containerName + "_client"]: libType
+      //   ? `${this.containerName}_client@${this.remotes[Object.keys(this.remotes)[0]].ssrEntry}`
+      //   : `${this.containerName}_client@${this.remotes[Object.keys(this.remotes)[0]].browserEntry}`,
     };
-
+    console.log(allRemotes)
     new ModuleFederationPlugin({
       name: this.containerName + "_client",
       exposes: getExposedClientModules(),
+      library: {
+        type: libType ? 'commonjs-module' : 'var',
+        name: this.containerName + "_client"
+      },
       shareScope: "client",
       filename: "remote-entry.js",
       dts: false,
@@ -85,8 +90,12 @@ export class FrameworkClientPlugin {
           version: "0.0.0",
         },
       },
+      remoteType: 'script',
       remotes: { ...allRemotes },
-      runtimePlugins: [require.resolve("./runtime.client.js")],
+      runtimePlugins: [
+        require.resolve("@module-federation/node/runtimePlugin"),
+        require.resolve("./runtime.client.js")
+      ],
     }).apply(compiler as any);
 
     // new RspackCircularDependencyPlugin({
@@ -113,16 +122,24 @@ export class FrameworkServerPlugin {
     private remotes: Record<string, FrameworkRemote>
   ) {}
 
+
   apply(compiler: Rspack.Compiler) {
+    compiler.options.output.publicPath = 'auto';
     new ModuleFederationPlugin({
       name: this.containerName + "_server",
       exposes: getExposedServerModules(),
       shareScope: "server",
+      filename: 'server-remote.js',
+      remoteType: 'script',
       dts: false,
       shared: {
         react: { singleton: true, shareScope: "server" },
         "react-dom": { singleton: true, shareScope: "server" },
       },
+      runtimePlugins: [
+          require.resolve("@module-federation/node/runtimePlugin"),
+          // require.resolve('./runtime.server.js')
+      ],
       remotes: {
         [this.containerName + "_server"]: `promise new Promise(() => {
           import(${JSON.stringify(this.containerName + "_server")});

@@ -22,7 +22,7 @@ declare global {
 const ogEnsure = __webpack_require__.e;
 __webpack_require__.e = async (...args: unknown[]) => {
   const [id] = args as [string | number];
-
+console.log('ensureing')
   if (typeof id === "string" && id.startsWith("fcr:")) {
     const [, remoteId, ...restClientId] = id.split(":");
     const clientId = restClientId.join(":");
@@ -36,6 +36,8 @@ __webpack_require__.e = async (...args: unknown[]) => {
     //   },
     // ]);
     // TODO: This is randomly hanging and IDK why yet
+
+    console.log('loading remoote call', remoteId + exposedId.slice(1));
     const mod = await loadRemote(remoteId + exposedId.slice(1));
     console.log("loaded remote", id);
     __webpack_require__.c[id] = {
@@ -50,16 +52,24 @@ __webpack_require__.e = async (...args: unknown[]) => {
 export default function (): FederationRuntimePlugin {
   return {
     name: "framework_runtime_client",
-    fetch(href, init) {
-      const url = new URL(href);
-      if (url.pathname.endsWith("/remote-entry.js")) {
-        url.pathname = url.pathname.replace(
-          /\/remote-entry.js$/,
-          "/mf-manifest.json"
-        );
-      }
-
-      return fetch(url, init);
-    },
+    //@ts-ignore
+    // createScript(args) {
+    //   console.log(args);
+    //   //@ts-ignore
+    //   console.log('file:/' + __non_webpack_require__.resolve(args.url));
+    //   //@ts-ignore
+    //   return 'file:/' + __non_webpack_require__.resolve(args.url) as any
+    // },
+//     fetch(href, init) {
+//       const url = new URL(href);
+//       if (url.pathname.endsWith("/remote-entry.js")) {
+//         url.pathname = url.pathname.replace(
+//           /\/remote-entry.js$/,
+//           "/mf-manifest.json"
+//         );
+//       }
+// console.log(url);
+//       return fetch(url, init);
+//     },
   };
 }

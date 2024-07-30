@@ -1,6 +1,6 @@
 import { createMiddleware } from "@hattip/adapter-node";
 import express from "express";
-
+import * as fs from 'node:fs';
 import serverMod from "./dist/server/index.js";
 import ssrMod from "./dist/ssr/index.js";
 
@@ -26,20 +26,37 @@ const browserAssets = express.static("dist/browser", {
   },
 });
 
+const serverAssets = express.static("dist/browser", {
+  setHeaders(res, path, stat) {
+    if (path.endsWith(".json")) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET");
+    }
+  },
+});
+
+
 const ssr = true;
 app.use((req, res, next) => {
   const url = new URL(req.url || "/", "http://localhost:3000");
   const isDataRequest = url.pathname.endsWith(".data");
   const tryAssets =
-    !ssr || (url.pathname !== "/" && pathname !== "/index.html");
+    !ssr || (url.pathname !== "/" && url.pathname !== "/index.html");
 
+
+  if(req.url.startsWith('/ssr')) {
+    return res.sendFile('dist' + req.url,{ root: process.cwd() });
+  }
   const sendResponse = () => {
     if (isDataRequest) {
       const serverUrl = new URL(url);
       serverUrl.pathname = serverUrl.pathname.replace(/\.data$/, "");
       req.url = serverUrl.pathname + serverUrl.search;
+      console.log('send response server mid')
       serverMiddleware(req, res, next);
     } else if (ssr) {
+      console.log('send response ssr mid')
+
       ssrMiddleware(req, res, next);
     } else {
       res.sendFile("dist/browser/index.html", { root: process.cwd() });
